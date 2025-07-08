@@ -1,5 +1,5 @@
 use openssl::x509::X509;
-use openssl::x509::extension::{self, SubjectAlternativeName};
+use openssl::x509::extension::SubjectAlternativeName;
 use openssl::{
     asn1::Asn1Time,
     hash::MessageDigest,
