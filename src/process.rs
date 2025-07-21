@@ -4,7 +4,7 @@ use crate::{certificate::CertificateData, FOLDER_NAME};
 pub(crate) fn generate_certificate(domains: Vec<String>, validity_days: u32) {
     match CertificateData::generate_self_signed(domains, validity_days) {
         Ok(cert) => {
-            println!("Certificate generated successfully.");
+            println!("Certificate generated successfully for {}.", cert.name);
             match cert.serialize(FOLDER_NAME) {
                 Ok(_) => println!("Certificate and key saved to {}", FOLDER_NAME),
                 Err(e) => eprintln!("Error saving certificate: {}", e),
@@ -26,7 +26,7 @@ pub(crate) fn renew_certificate(files_path: &str, validity_days: u32) {
     };
     match cert_data.renew(validity_days) {
         Ok(_) => {
-            println!("Certificate renewed successfully.");
+            println!("Certificate renewed successfully for {}.", cert_data.name);
             match cert_data.serialize(FOLDER_NAME) {
                 Ok(_) => println!("Renewed certificate and key saved to {}", FOLDER_NAME),
                 Err(e) => eprintln!("Error saving renewed certificate: {}", e),

@@ -11,6 +11,7 @@ use openssl::{
 };
 
 pub struct CertificateData {
+    pub name: String,
     pub private_key: String,
     pub cert_pem: String,
 }
@@ -54,6 +55,7 @@ impl CertificateData {
         let cert_pem = String::from_utf8(cert.to_pem()?)?;
 
         return Ok(CertificateData {
+            name: common_names,
             private_key: private_key_pem,
             cert_pem,
         });
@@ -64,7 +66,9 @@ impl CertificateData {
         let key_path = format!("{}/key.pem", folder_path);
         let cert_pem = read_to_string(cert_path)?;
         let private_key = read_to_string(key_path)?;
+        let name = get_name(&cert_pem);
         Ok(CertificateData {
+            name: name,
             private_key: private_key.to_string(),
             cert_pem: cert_pem.to_string(),
         })
@@ -90,7 +94,14 @@ impl CertificateData {
         cert_builder.set_not_after(&not_after)?;
 
         let mut alt_names_builder = SubjectAlternativeName::new();
-        for name in cert.subject_alt_names().iter() {
+        let subject_names = cert.subject_alt_names();
+        let main_name = subject_names
+            .iter()
+            .next()
+            .and_then(|entry| entry.iter().next())
+            .and_then(|name| name.dnsname())
+            .unwrap_or_else(|| "localhost");
+        for name in subject_names.iter() {
             for entry in name.iter() {
                 if let Some(dns_name) = entry.dnsname() {
                     alt_names_builder.dns(dns_name);
@@ -105,6 +116,7 @@ impl CertificateData {
         let private_key_pem = String::from_utf8(pkey.private_key_to_pem_pkcs8()?)?;
         let cert_pem = String::from_utf8(new_cert.to_pem()?)?;
         Ok(CertificateData {
+            name: main_name.to_string(),
             private_key: private_key_pem,
             cert_pem,
         })
@@ -124,6 +136,19 @@ impl CertificateData {
         key_file.write_all(self.private_key.as_bytes())?;
 
         Ok(())
+    }
+}
+
+fn get_name(cert_pem: &str) -> String {
+    let cert = X509::from_pem(cert_pem.as_bytes());
+    match cert {
+        Ok(cert) => cert
+            .subject_name()
+            .entries()
+            .next()
+            .and_then(|entry| entry.data().as_utf8().ok())
+            .map_or_else(|| "Unknown".to_string(), |name| name.to_string()),
+        Err(_) => "Unknown".to_string(),
     }
 }
 
