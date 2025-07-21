@@ -1,3 +1,5 @@
+use std::fs::read_to_string;
+
 use openssl::x509::X509;
 use openssl::x509::extension::SubjectAlternativeName;
 use openssl::{
@@ -57,10 +59,11 @@ impl CertificateData {
         });
     }
 
-    pub fn from_pem(
-        private_key: &str,
-        cert_pem: &str,
-    ) -> Result<CertificateData, Box<dyn std::error::Error>> {
+    pub fn from_pem(folder_path: &str) -> Result<CertificateData, Box<dyn std::error::Error>> {
+        let cert_path = format!("{}/cert.pem", folder_path);
+        let key_path = format!("{}/key.pem", folder_path);
+        let cert_pem = read_to_string(cert_path)?;
+        let private_key = read_to_string(key_path)?;
         Ok(CertificateData {
             private_key: private_key.to_string(),
             cert_pem: cert_pem.to_string(),
@@ -106,24 +109,38 @@ impl CertificateData {
             cert_pem,
         })
     }
+
+    pub fn serialize(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        use std::fs::File;
+        use std::io::Write;
+
+        let cert_path = format!("{}/cert.pem", path);
+        let key_path = format!("{}/key.pem", path);
+
+        let mut cert_file = File::create(cert_path)?;
+        cert_file.write_all(self.cert_pem.as_bytes())?;
+
+        let mut key_file = File::create(key_path)?;
+        key_file.write_all(self.private_key.as_bytes())?;
+
+        Ok(())
+    }
 }
 
+// let extensions = cert
+//     .issuer_alt_names()
+//     .iter()
+//     .map(|name| {
+//         let mut ext_builder = extension::SubjectAlternativeName::new();
+//         for entry in name.iter() {
+//             if let Some(dns_name) = entry.dnsname() {
+//                 ext_builder.dns(dns_name);
+//             }
+//         }
+//         ext_builder.build(&cert_builder.x509v3_context(None, None))
+//     })
+//     .collect::<Result<Vec<_>, _>>()?;
 
-
-        // let extensions = cert
-        //     .issuer_alt_names()
-        //     .iter()
-        //     .map(|name| {
-        //         let mut ext_builder = extension::SubjectAlternativeName::new();
-        //         for entry in name.iter() {
-        //             if let Some(dns_name) = entry.dnsname() {
-        //                 ext_builder.dns(dns_name);
-        //             }
-        //         }
-        //         ext_builder.build(&cert_builder.x509v3_context(None, None))
-        //     })
-        //     .collect::<Result<Vec<_>, _>>()?;
-
-        // for ext in extensions {
-        //     cert_builder.append_extension(ext)?;
-        // }
+// for ext in extensions {
+//     cert_builder.append_extension(ext)?;
+// }
