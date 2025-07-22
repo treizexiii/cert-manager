@@ -69,7 +69,7 @@ dependencies = [
 
 [[package]]
 name = "cert-manager"
-version = "0.1.0"
+version = "0.1.5"
 dependencies = [
  "clap",
  "openssl",
