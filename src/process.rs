@@ -1,12 +1,14 @@
-use crate::{certificate::CertificateData, FOLDER_NAME};
+use std::{fs, path::Path};
 
+use crate::certificate::CertificateData;
 
-pub(crate) fn generate_certificate(domains: Vec<String>, validity_days: u32) {
+pub(crate) fn generate_certificate(domains: Vec<String>, validity_days: u32, folder_path: &str) {
     match CertificateData::generate_self_signed(domains, validity_days) {
         Ok(cert) => {
             println!("Certificate generated successfully for {}.", cert.name);
-            match cert.serialize(FOLDER_NAME) {
-                Ok(_) => println!("Certificate and key saved to {}", FOLDER_NAME),
+            let path = build_path(folder_path, &cert.name);
+            match cert.serialize(&path) {
+                Ok(_) => println!("Certificate and key saved to {}", path),
                 Err(e) => eprintln!("Error saving certificate: {}", e),
             }
         }
@@ -16,19 +18,20 @@ pub(crate) fn generate_certificate(domains: Vec<String>, validity_days: u32) {
     }
 }
 
-pub(crate) fn renew_certificate(files_path: &str, validity_days: u32) {
-    let mut cert_data = match CertificateData::from_pem(&files_path) {
+pub(crate) fn renew_certificate(files_path: &str, validity_days: u32, folder_path: &str) {
+    let mut cert = match CertificateData::from_pem(&files_path) {
         Ok(data) => data,
         Err(e) => {
             eprintln!("Error loading certificate: {}", e);
             return;
         }
     };
-    match cert_data.renew(validity_days) {
+    match cert.renew(validity_days) {
         Ok(_) => {
-            println!("Certificate renewed successfully for {}.", cert_data.name);
-            match cert_data.serialize(FOLDER_NAME) {
-                Ok(_) => println!("Renewed certificate and key saved to {}", FOLDER_NAME),
+            println!("Certificate renewed successfully for {}.", cert.name);
+            let path = build_path(folder_path, &cert.name);
+            match cert.serialize(&path) {
+                Ok(_) => println!("Renewed certificate and key saved to {}", path),
                 Err(e) => eprintln!("Error saving renewed certificate: {}", e),
             }
         }
@@ -36,4 +39,15 @@ pub(crate) fn renew_certificate(files_path: &str, validity_days: u32) {
             eprintln!("Error renewing certificate: {}", e);
         }
     }
+}
+
+fn build_path(folder_path: &str, folder_name: &str) -> String {
+    let path = format!("{}/{}", folder_path, folder_name);
+    let exists = Path::new(&path).exists();
+    if !exists {
+        fs::create_dir_all(&path).unwrap_or_else(|_| {
+            eprintln!("Failed to create directory: {}", path);
+        });
+    }
+    path
 }
